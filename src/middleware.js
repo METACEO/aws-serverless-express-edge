@@ -1,22 +1,25 @@
-module.exports.eventContext = options => function apiGatewayEventParser (req, res, next) {
-  options = options || {} // defaults: {reqPropKey: 'apiGateway', deleteHeaders: true}
-  const reqPropKey = options.reqPropKey || 'apiGateway'
-  const deleteHeaders = options.deleteHeaders === undefined ? true : options.deleteHeaders
+'use strict'
 
-  if (!req.headers['x-apigateway-event'] || !req.headers['x-apigateway-context']) {
-    console.error('Missing x-apigateway-event or x-apigateway-context header(s)')
+module.exports.eventContext = options => (req, res, next) => {
+  options = options || {} // defaults: {reqPropKey: 'apiGateway', deleteHeaders: true}
+  const reqPropKey = options.reqPropKey || 'edge'
+  const deleteHeaders =
+    options.deleteHeaders === undefined ? true : options.deleteHeaders
+
+  if (!req.headers['x-edge-event'] || !req.headers['x-edge-context']) {
+    console.error('Missing x-edge-event or x-edge-context header(s)')
     next()
     return
   }
 
   req[reqPropKey] = {
-    event: JSON.parse(decodeURIComponent(req.headers['x-apigateway-event'])),
-    context: JSON.parse(decodeURIComponent(req.headers['x-apigateway-context']))
+    event: JSON.parse(decodeURIComponent(req.headers['x-edge-event'])),
+    context: JSON.parse(decodeURIComponent(req.headers['x-edge-context']))
   }
 
   if (deleteHeaders) {
-    delete req.headers['x-apigateway-event']
-    delete req.headers['x-apigateway-context']
+    delete req.headers['x-edge-event']
+    delete req.headers['x-edge-context']
   }
 
   next()
