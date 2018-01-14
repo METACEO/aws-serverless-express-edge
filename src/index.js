@@ -17,6 +17,7 @@ const http = require('http')
 const url = require('url')
 const qs = require('qs')
 const isType = require('type-is')
+const zlib = require('zlib')
 
 function getPathWithQueryStringParams(event) {
   const request = event.Records[0].cf.request
@@ -74,10 +75,6 @@ function forwardResponseToEdge(server, response, resolver) {
       delete headers['transfer-encoding']
     }
 
-    Object.keys(headers).forEach(h => {
-      headers[h] = [{ key: h, value: headers[h] }]
-    })
-
     // Blacklisted / read-only headers
     if (headers.hasOwnProperty('connection')) {
       delete headers['connection']
@@ -87,19 +84,40 @@ function forwardResponseToEdge(server, response, resolver) {
     }
 
     const contentType = getContentType({
-      contentTypeHeader: headers['content-type'][0].value
+      contentTypeHeader: headers['content-type']
     })
-    const isBase64Encoded = isContentTypeBinaryMimeType({
+    let isBase64Encoded = isContentTypeBinaryMimeType({
       contentType,
       binaryMimeTypes: server._binaryTypes
     })
-    const body = bodyBuffer.toString(isBase64Encoded ? 'base64' : 'utf8')
+    let body
+    switch (contentType) {
+      case 'text/html':
+        body = zlib.gzipSync(bodyBuffer).toString('base64')
+        isBase64Encoded = true
+        headers['content-encoding'] = 'gzip'
+        break
+      default:
+        body = bodyBuffer.toString(isBase64Encoded ? 'base64' : 'utf8')
+    }
+
+    Object.keys(headers).forEach(h => {
+      headers[h] = [
+        {
+          key: h,
+          value: headers[h]
+        }
+      ]
+    })
+
     const successResponse = { status, body, headers }
     if (isBase64Encoded) {
       successResponse.bodyEncoding = 'base64'
     }
 
-    resolver.succeed({ response: successResponse })
+    resolver.succeed({
+      response: successResponse
+    })
   })
 }
 
