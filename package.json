@@ -116,6 +116,7 @@
   },
   "dependencies": {
     "binary-case": "^1.0.0",
+    "flatted": "^2.0.0",
     "qs": "^6.5.1",
     "type-is": "^1.6.16"
   },

@@ -15,9 +15,10 @@
 'use strict'
 const http = require('http')
 const url = require('url')
-const qs = require('qs')
 const isType = require('type-is')
+const qs = require('qs')
 const zlib = require('zlib')
+const { stringify } = require('flatted/cjs')
 
 function getPathWithQueryStringParams(event) {
   const request = event.Records[0].cf.request
@@ -52,8 +53,8 @@ function mapEdgeEventToHttpRequest(event, context, socketPath) {
   const eventWithoutBody = clone({}, event)
   delete eventWithoutBody.body
 
-  headers['x-edge-event'] = encodeURIComponent(JSON.stringify(eventWithoutBody))
-  headers['x-edge-context'] = encodeURIComponent(JSON.stringify(context))
+  headers['x-edge-event'] = encodeURIComponent(stringify(eventWithoutBody))
+  headers['x-edge-context'] = encodeURIComponent(stringify(context))
 
   return {
     method: request.method,
