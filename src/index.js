@@ -20,8 +20,7 @@ const qs = require('qs')
 const zlib = require('zlib')
 const { stringify } = require('flatted/cjs')
 
-function getPathWithQueryStringParams(event) {
-  const request = event.Records[0].cf.request
+function getPathWithQueryStringParams(request) {
   return url.format({
     pathname: request.uri,
     query: qs.parse(request.querystring)
@@ -50,15 +49,28 @@ function mapEdgeEventToHttpRequest(event, context, socketPath) {
     acc[request.headers[name][0].key] = request.headers[name][0].value
     return acc
   }, {})
-  const eventWithoutBody = clone({}, event)
-  delete eventWithoutBody.body
+  const eventWithoutBody = clone({
+    ...event,
+    Records: [
+      {
+        ...event.Records[0],
+        cf: {
+          ...event.Records[0].cf,
+          request: {
+            ...event.Records[0].cf.request,
+            body: undefined
+          }
+        }
+      }
+    ]
+  })
 
   headers['x-edge-event'] = encodeURIComponent(stringify(eventWithoutBody))
   headers['x-edge-context'] = encodeURIComponent(stringify(context))
 
   return {
     method: request.method,
-    path: getPathWithQueryStringParams(event),
+    path: getPathWithQueryStringParams(request),
     headers,
     socketPath
   }
@@ -148,6 +160,7 @@ function forwardLibraryErrorResponseToEdge(error, resolver) {
 
 function forwardRequestToNodeServer(server, event, context, resolver) {
   try {
+    const request = event.Records[0].cf.request
     const requestOptions = mapEdgeEventToHttpRequest(
       event,
       context,
@@ -156,12 +169,12 @@ function forwardRequestToNodeServer(server, event, context, resolver) {
     const req = http.request(requestOptions, response =>
       forwardResponseToEdge(server, response, resolver)
     )
-    if (event.body) {
-      if (event.bodyEncoding === 'base64') {
-        event.body = Buffer.from(event.body, 'base64')
+    if (request.body) {
+      if (request.body.encoding === 'base64') {
+        request.body.data = Buffer.from(request.body.data, 'base64')
       }
 
-      req.write(event.body)
+      req.write(request.body.data)
     }
 
     req

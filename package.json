@@ -26,7 +26,7 @@
     "url": "https://github.com/FormidableLabs/aws-serverless-express-edge.git"
   },
   "engines": {
-    "node": ">=4"
+    "node": ">=12"
   },
   "release": {
     "verifyConditions": [
